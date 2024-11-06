@@ -1,5 +1,6 @@
 #![allow(unused_imports)]
 use std::io::{Cursor, Read, Write};
+use std::thread;
 use std::net::{TcpListener, TcpStream};
 use bytes::BufMut;
 
@@ -14,7 +15,9 @@ fn main() {
     for stream in listener.incoming() {
         match stream {
             Ok(mut stream) => {
-                handle_client(&mut stream);
+                thread::spawn(move || {
+                    handle_client(&mut stream);
+                });
             }
             Err(e) => {
                 println!("error: {}", e);
