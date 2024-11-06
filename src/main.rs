@@ -24,7 +24,8 @@ fn main() {
 }
 
 fn handle_client<T: Read + Write>(stream: &mut T) {
-    let mut response = vec![];
+    let mut response_msg = vec![];
+    let mut response_len = vec![];
     let mut len_buf = [0_u8; 4];
 
     if let Err(e) = stream.read_exact(&mut len_buf) {
@@ -43,12 +44,21 @@ fn handle_client<T: Read + Write>(stream: &mut T) {
 
     println!("Incoming Message Buffer : {:?}", msg_buf);
 
-    let message_size: i32 = 20;
-    response.put_i32(message_size);
-    response.extend(&msg_buf[4..8]);
-    response.put_i16(35_i16);
+    // let message_size: i32 = 20;
+    // response_msg.put_i32(message_size);
+    response_msg.extend(&msg_buf[4..8]);
+    response_msg.put_i16(35_i16);
 
-    if let Err(e) = stream.write(&response) {
+    println!("{}", response_msg.len());
+    let message_size = response_msg.len() * 2;
+    response_len.put_i32(message_size as i32);
+
+    if let Err(e) = stream.write_all(&response_len) {
+        println!("error: {}", e);
+        return;
+    }
+
+    if let Err(e) = stream.write(&response_msg) {
         println!("error: {}", e);
         return;
     }
