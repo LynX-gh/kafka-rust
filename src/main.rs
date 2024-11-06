@@ -24,16 +24,17 @@ fn main() {
 }
 
 fn handle_client<T: Read + Write>(stream: &mut T) {
-    let mut response_msg = vec![];
     let mut response_len = vec![];
+    let mut response_msg = vec![];
+
     let mut len_buf = [0_u8; 4];
 
     if let Err(e) = stream.read_exact(&mut len_buf) {
         println!("error: {}", e);
         return;
     }
-
     println!("Incoming Message Length : {:?}", len_buf);
+
     let msg_len = i32::from_be_bytes(len_buf);
 
     let mut msg_buf = vec![0_u8; msg_len as usize];
@@ -41,16 +42,37 @@ fn handle_client<T: Read + Write>(stream: &mut T) {
         println!("error: {}", e);
         return;
     }
-
     println!("Incoming Message Buffer : {:?}", msg_buf);
 
-    // let message_size: i32 = 20;
-    // response_msg.put_i32(message_size);
-    response_msg.extend(&msg_buf[4..8]);
-    response_msg.put_i16(35_i16);
+    let correlation_id = i32::from_be_bytes(msg_buf[4..8].try_into().expect("API Key Failed Lmao"));
+    let api_key = i16::from_be_bytes(msg_buf[0..2].try_into().expect("API Key Failed Lmao"));
+    let api_version = i16::from_be_bytes(msg_buf[2..4].try_into().expect("API Version Failed Lmao"));
 
-    println!("{}", response_msg.len());
-    let message_size = response_msg.len() * 2;
+    // Add cid
+    response_msg.put_i32(correlation_id);
+
+    println!("API Key : {}", api_key);
+    println!("API Version : {}", api_version);
+
+    // Add error code to resp
+    if api_key == 18 && api_version > 0 && api_version <= 4 {
+        response_msg.put_i16(0);
+    }
+    else {
+        response_msg.put_i16(35);
+    }
+
+    // Add data
+    response_msg.put_i8(2); // num api key records + 1
+    response_msg.put_i16(18); // api key
+    response_msg.put_i16(0); // min version
+    response_msg.put_i16(4); // max version
+    response_msg.put_i8(0); // TAG_BUFFER length
+    response_msg.put_i32(420); // throttle time ms
+    response_msg.put_i8(0); // TAG_BUFFER length
+
+    // calc msg size
+    let message_size = response_msg.len();
     response_len.put_i32(message_size as i32);
 
     if let Err(e) = stream.write_all(&response_len) {
