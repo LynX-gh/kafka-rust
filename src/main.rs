@@ -76,6 +76,41 @@ fn handle_client(stream: &mut TcpStream) {
     }
 }
 
+fn handle_fetch_request(msg_buf: &Vec<u8>) -> Vec<u8>{
+    let mut response_len = vec![];
+    let mut response_msg = vec![];
+
+    let correlation_id = i32::from_be_bytes(msg_buf[4..8].try_into().expect("Correlation ID Failed Lmao"));
+    let api_version = i16::from_be_bytes(msg_buf[2..4].try_into().expect("API Version Failed Lmao"));
+
+    // Resp Header
+    response_msg.put_i32(correlation_id); // Add cid
+    response_msg.put_i8(0); // TAG_BUFFER length
+
+    // Resp Body
+    response_msg.put_i32(0); // throttle time ms
+
+    // Add error code to resp
+    if api_version > 0 && api_version <= 16 {
+        response_msg.put_i16(0);
+    }
+    else {
+        response_msg.put_i16(35);
+    }
+
+    response_msg.put_i32(0); // session_id
+    response_msg.put_i8(1); // num api key records + 1
+
+    response_msg.put_i8(0); // TAG_BUFFER length
+
+    // calc msg size
+    let message_size = response_msg.len();
+    response_len.put_i32(message_size as i32);
+    response_len.extend(response_msg);
+
+    response_len
+}
+
 fn handle_apiversions_request(msg_buf: &Vec<u8>) -> Vec<u8> {
     let mut response_len = vec![];
     let mut response_msg = vec![];
@@ -125,26 +160,6 @@ fn handle_apiversions_request(msg_buf: &Vec<u8>) -> Vec<u8> {
     //     println!("error: {}", e);
     //     return;
     // }
-}
-
-fn handle_fetch_request(msg_buf: &Vec<u8>) -> Vec<u8>{
-    let mut response_len = vec![];
-    let mut response_msg = vec![];
-
-    let correlation_id = i32::from_be_bytes(msg_buf[4..8].try_into().expect("Correlation ID Failed Lmao"));
-
-    // Add cid
-    response_msg.put_i32(correlation_id);
-
-    // Add error code to resp
-    response_msg.put_i16(35);
-
-    // calc msg size
-    let message_size = response_msg.len();
-    response_len.put_i32(message_size as i32);
-    response_len.extend(response_msg);
-
-    response_len
 }
 
 fn handle_invalid_request(msg_buf: &Vec<u8>) -> Vec<u8> {
