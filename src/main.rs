@@ -83,6 +83,18 @@ fn handle_fetch_request(msg_buf: &Vec<u8>) -> Vec<u8>{
     let correlation_id = i32::from_be_bytes(msg_buf[4..8].try_into().expect("Correlation ID Failed Lmao"));
     let api_version = i16::from_be_bytes(msg_buf[2..4].try_into().expect("API Version Failed Lmao"));
 
+    // Read Fetch Request
+    let max_wait_ms = i32::from_be_bytes(msg_buf[8..12].try_into().expect("Topic ID Failed LULw"));
+    let min_bytes= i32::from_be_bytes(msg_buf[12..16].try_into().expect("Min Bytes Failed LULw"));
+    let max_bytes= i32::from_be_bytes(msg_buf[16..20].try_into().expect("Max Bytes Failed LULw"));
+    let isolation_level = i32::from_be_bytes(msg_buf[20..24].try_into().expect("Isolation Level Failed LULw"));
+    let session_id = i32::from_be_bytes(msg_buf[24..28].try_into().expect("Session ID Failed LULw"));
+    let session_epoch = i32::from_be_bytes(msg_buf[28..32].try_into().expect("Session Epoch Failed LULw"));
+
+    let topics = i8::from_be_bytes(msg_buf[32..33].try_into().expect("Topic ID Failed LULw"));
+
+    print!("Topics - {topics}");
+
     // Resp Header
     response_msg.put_i32(correlation_id); // Add cid
     response_msg.put_i8(0); // TAG_BUFFER length
@@ -99,7 +111,7 @@ fn handle_fetch_request(msg_buf: &Vec<u8>) -> Vec<u8>{
     }
 
     response_msg.put_i32(0); // session_id
-    response_msg.put_i8(1); // num api key records + 1
+    response_msg.put_i8(2); // num api key records + 1
 
     response_msg.put_i8(0); // TAG_BUFFER length
 
