@@ -75,7 +75,7 @@ pub fn handle_fetch_request(mut msg_buf: &[u8]) -> Vec<u8>{
         // Partitions Array
         response_msg.put_u8(2); // num partitions + 1
         response_msg.put_i32(0); // partition_index
-        response_msg.put_i16(100); // error_code
+        response_msg.put_i16(0); // error_code
         response_msg.put_i64(0); // high_watermark
         response_msg.put_i64(0); // last_stable_offset
         response_msg.put_i64(0); // log_start_offset
