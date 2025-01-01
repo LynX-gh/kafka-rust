@@ -1,4 +1,4 @@
-[![progress-banner](https://backend.codecrafters.io/progress/kafka/f6de51f4-dda0-4fe1-8d2d-1032be9d38a4)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
+[![progress-banner](https://backend.codecrafters.io/progress/kafka/f6de51f4-dda0-4fe1-8d2d-1032be9d38a4)](https://app.codecrafters.io/users/LynX-gh)
 
 This is a starting point for Rust solutions to the
 ["Build Your Own Kafka" Challenge](https://codecrafters.io/challenges/kafka).
