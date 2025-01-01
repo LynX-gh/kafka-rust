@@ -2,7 +2,7 @@
 use std::io::{Cursor, Read, Write, Error};
 use std::thread;
 use std::net::{TcpListener, TcpStream};
-use bytes::BufMut;
+use bytes::{Bytes, BytesMut, Buf, BufMut};
 
 fn main() {
     // You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -76,24 +76,41 @@ fn handle_client(stream: &mut TcpStream) {
     }
 }
 
-fn handle_fetch_request(msg_buf: &Vec<u8>) -> Vec<u8>{
+fn handle_fetch_request(mut msg_buf: &[u8]) -> Vec<u8>{
     let mut response_len = vec![];
     let mut response_msg = vec![];
 
-    let correlation_id = i32::from_be_bytes(msg_buf[4..8].try_into().expect("Correlation ID Failed Lmao"));
-    let api_version = i16::from_be_bytes(msg_buf[2..4].try_into().expect("API Version Failed Lmao"));
-
+    let _api_key = msg_buf.get_i16();
+    let api_version = msg_buf.get_i32();
+    let correlation_id = msg_buf.get_i32();
+    
     // Read Fetch Request
-    let max_wait_ms = i32::from_be_bytes(msg_buf[8..12].try_into().expect("Topic ID Failed LULw"));
-    let min_bytes= i32::from_be_bytes(msg_buf[12..16].try_into().expect("Min Bytes Failed LULw"));
-    let max_bytes= i32::from_be_bytes(msg_buf[16..20].try_into().expect("Max Bytes Failed LULw"));
-    let isolation_level = i32::from_be_bytes(msg_buf[20..24].try_into().expect("Isolation Level Failed LULw"));
-    let session_id = i32::from_be_bytes(msg_buf[24..28].try_into().expect("Session ID Failed LULw"));
-    let session_epoch = i32::from_be_bytes(msg_buf[28..32].try_into().expect("Session Epoch Failed LULw"));
+    let _max_wait_ms = msg_buf.get_i32();
+    let _min_bytes= msg_buf.get_i32();
+    let _max_bytes= msg_buf.get_i32();
+    let _isolation_level = msg_buf.get_i32();
+    let _session_id = msg_buf.get_i32();
+    let _session_epoch = msg_buf.get_i32();
 
-    let topics = i8::from_be_bytes(msg_buf[32..33].try_into().expect("Topic ID Failed LULw"));
+    let topic_count = msg_buf.get_u8().saturating_sub(1);
+    let mut topics = Vec::new();
+    for _ in 0..topic_count {
+        let topic_id = msg_buf.get_u128();
+        let partition_count = msg_buf.get_u8().saturating_sub(1);
+        for _ in 0..partition_count {
+            let _partition = msg_buf.get_u32();
+            let _current_leader_epoch = msg_buf.get_u32();
+            let _fetch_offset = msg_buf.get_u64();
+            let _last_fetched_epoch = msg_buf.get_u32();
+            let _log_start_offset = msg_buf.get_u64();
+            let _partition_max_bytes = msg_buf.get_u32();
+            msg_buf.advance(1); // TAG_BUFFER
+        }
+        msg_buf.advance(1); // TAG_BUFFER
+        topics.push(topic_id);
+    }
 
-    print!("Topics - {topics}");
+    println!("Topics - {:?}", topics);
 
     // Resp Header
     response_msg.put_i32(correlation_id); // Add cid
@@ -123,12 +140,13 @@ fn handle_fetch_request(msg_buf: &Vec<u8>) -> Vec<u8>{
     response_len
 }
 
-fn handle_apiversions_request(msg_buf: &Vec<u8>) -> Vec<u8> {
+fn handle_apiversions_request(mut msg_buf: &[u8]) -> Vec<u8> {
     let mut response_len = vec![];
     let mut response_msg = vec![];
 
-    let correlation_id = i32::from_be_bytes(msg_buf[4..8].try_into().expect("Correlation ID Failed Lmao"));
-    let api_version = i16::from_be_bytes(msg_buf[2..4].try_into().expect("API Version Failed Lmao"));
+    let _api_key = msg_buf.get_i16();
+    let api_version = msg_buf.get_i16();
+    let correlation_id = msg_buf.get_i32();
 
     // Add cid
     response_msg.put_i32(correlation_id);
@@ -174,11 +192,13 @@ fn handle_apiversions_request(msg_buf: &Vec<u8>) -> Vec<u8> {
     // }
 }
 
-fn handle_invalid_request(msg_buf: &Vec<u8>) -> Vec<u8> {
+fn handle_invalid_request(mut msg_buf: &[u8]) -> Vec<u8> {
     let mut response_len = vec![];
     let mut response_msg = vec![];
 
-    let correlation_id = i32::from_be_bytes(msg_buf[4..8].try_into().expect("Correlation ID Failed Lmao"));
+    let _api_key = msg_buf.get_i16();
+    let _api_version = msg_buf.get_i16();
+    let correlation_id = msg_buf.get_i32();
 
     // Add cid
     response_msg.put_i32(correlation_id);
