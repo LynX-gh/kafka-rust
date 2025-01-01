@@ -1,32 +1,26 @@
 #![allow(unused_imports)]
-use std::f32::consts::E;
 use std::thread;
-use std::net::TcpListener;
+use tokio::net::TcpListener;
+use tokio::task;
 
 pub mod kafka_client;
 
 use kafka_client::handle_client;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     println!("Logs from your program will appear here!");
 
-    let listener = TcpListener::bind("127.0.0.1:9092").unwrap();
-    handle_incoming_connections(listener);
+    let listener = TcpListener::bind("127.0.0.1:9092").await.unwrap();
+    handle_incoming_connections(listener).await;
 }
 
-fn handle_incoming_connections(listener: TcpListener) {
-    for stream in listener.incoming() {
-        match stream {
-            Ok(mut stream) => {
-                thread::spawn(move || {
-                    if let Err(e) = handle_client(&mut stream) {
-                        println!("error: {}", e);
-                    }
-                });
-            }
-            Err(e) => {
+async fn handle_incoming_connections(listener: TcpListener) {
+    while let Ok((mut stream, _)) = listener.accept().await {
+        task::spawn(async move {
+            if let Err(e) = handle_client(&mut stream).await {
                 println!("error: {}", e);
             }
-        }
+        });
     }
 }

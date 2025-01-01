@@ -1,5 +1,6 @@
-use std::io::{Cursor, Read, Write, Error};
-use std::net::{TcpListener, TcpStream};
+use std::io::Error;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
 use bytes::{Bytes, BytesMut, Buf, BufMut};
 
 pub mod apiversions;
@@ -10,13 +11,13 @@ use apiversions::handle_apiversions_request;
 use fetch::handle_fetch_request;
 use invalid::handle_invalid_request;
 
-pub fn handle_client(stream: &mut TcpStream) -> Result<(), Error>{
-    while stream.peek(&mut [0; 4]).is_ok() {
+pub async fn handle_client(stream: &mut TcpStream) -> Result<(), Error>{
+    while stream.peek(&mut [0; 4]).await.is_ok() {
 
-        let msg_len = read_message_length(stream)?;
+        let msg_len = read_message_length(stream).await?;
         println!("Incoming Message Length : {:?}", msg_len);
 
-        let msg_buf = read_message_data(stream, msg_len)?;
+        let msg_buf = read_message_data(stream, msg_len).await?;
         println!("Incoming Message Buffer : {:?}", msg_buf);
 
         let (api_key, api_version) = parse_message_header(&msg_buf)?;
@@ -25,13 +26,13 @@ pub fn handle_client(stream: &mut TcpStream) -> Result<(), Error>{
 
         match api_key {
             1 => {
-                stream.write(&handle_fetch_request(&msg_buf))?;
+                stream.write(&handle_fetch_request(&msg_buf)).await?;
             },
             18 => {
-                stream.write(&handle_apiversions_request(&msg_buf))?;
+                stream.write(&handle_apiversions_request(&msg_buf)).await?;
             },
             _ => {
-                stream.write(&handle_invalid_request(&msg_buf))?;
+                stream.write(&handle_invalid_request(&msg_buf)).await?;
             }
         }
 
@@ -40,15 +41,15 @@ pub fn handle_client(stream: &mut TcpStream) -> Result<(), Error>{
     Ok(())
 }
 
-fn read_message_length(stream: &mut TcpStream) -> Result<i32, Error> {
+async fn read_message_length(stream: &mut TcpStream) -> Result<i32, Error> {
     let mut len_buf = [0_u8; 4];
-    stream.read_exact(&mut len_buf)?;
+    stream.read_exact(&mut len_buf).await?;
     Ok(i32::from_be_bytes(len_buf))
 }
 
-fn read_message_data(stream: &mut TcpStream, msg_len: i32) -> Result<Vec<u8>, Error> {
+async fn read_message_data(stream: &mut TcpStream, msg_len: i32) -> Result<Vec<u8>, Error> {
     let mut msg_buf = vec![0_u8; msg_len as usize];
-    stream.read_exact(&mut msg_buf)?;
+    stream.read_exact(&mut msg_buf).await?;
     Ok(msg_buf)
 }
 
