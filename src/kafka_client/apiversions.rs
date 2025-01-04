@@ -21,7 +21,7 @@ pub fn handle_apiversions_request(mut msg_buf: &[u8]) -> Vec<u8> {
     }
 
     // Add data
-    response_msg.put_u8(3); // num api key records + 1
+    response_msg.put_u8(4); // num api key records + 1
 
     // Fetch Record = 1 [0:16]
     response_msg.put_i16(1); // api key
@@ -34,6 +34,12 @@ pub fn handle_apiversions_request(mut msg_buf: &[u8]) -> Vec<u8> {
     response_msg.put_i16(0); // min version
     response_msg.put_i16(4); // max version
     response_msg.put_i8(0); // TAG_BUFFER length
+    
+    // DescribeTopicPartitions Record = 75 [0:0]
+    response_msg.put_i16(75); // api key
+    response_msg.put_i16(0); // min version
+    response_msg.put_i16(0); // max version
+    response_msg.put_i8(0); // TAG_BUFFER length
 
     // Close Array
     response_msg.put_i32(420); // throttle time ms
@@ -45,10 +51,4 @@ pub fn handle_apiversions_request(mut msg_buf: &[u8]) -> Vec<u8> {
     response_len.extend(response_msg);
 
     response_len
-
-    // let mut remaining_buf = vec![];
-    // if let Err(e) = stream.read_to_end(&mut remaining_buf) {
-    //     println!("error: {}", e);
-    //     return;
-    // }
 }
