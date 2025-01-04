@@ -11,8 +11,12 @@ use apiversions::handle_apiversions_request;
 use fetch::handle_fetch_request;
 use invalid::handle_invalid_request;
 
+use crate::CONFIG;
+
 pub async fn handle_client(stream: &mut TcpStream) -> Result<(), Error>{
     while stream.peek(&mut [0; 4]).await.is_ok() {
+
+        // println!("Config : {:#?}", CONFIG);
 
         let msg_len = read_message_length(stream).await?;
         println!("Incoming Message Length : {:?}", msg_len);
@@ -36,7 +40,7 @@ pub async fn handle_client(stream: &mut TcpStream) -> Result<(), Error>{
             }
         }
 
-        // println!("accepted new connection");
+        // println!("handled new connection");
     }
     Ok(())
 }

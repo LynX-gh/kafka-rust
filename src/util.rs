@@ -1,0 +1,34 @@
+use serde::Deserialize;
+use std::fs;
+
+#[derive(Debug, Deserialize)]
+pub struct ApiKeyDetail {
+    pub key: i16,
+    pub min_version: i16,
+    pub max_version: i16
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ApiKey {
+    pub supported_keys: Vec<i16>
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ApiConfig {
+    pub version: String,
+    pub endpoint: String
+}
+
+#[derive(Debug, Deserialize)]
+pub struct KafkaConfig {
+    pub api: ApiConfig,
+    pub api_key: ApiKey,
+    pub key: Vec<ApiKeyDetail>
+}
+
+impl KafkaConfig {
+    pub fn new() -> Self {
+        let config_str = fs::read_to_string("src/KafkaConfig.toml").expect("Failed to read config file");
+        toml::from_str(&config_str).expect("Failed to create config")
+    }
+}

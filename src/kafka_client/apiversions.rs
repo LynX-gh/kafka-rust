@@ -1,6 +1,7 @@
 use std::io::{Cursor, Read, Write, Error};
 use bytes::{Bytes, BytesMut, Buf, BufMut};
-use toml;
+
+use crate::CONFIG;
 
 pub fn handle_apiversions_request(mut msg_buf: &[u8]) -> Vec<u8> {
     let mut response_len = vec![];
@@ -22,25 +23,36 @@ pub fn handle_apiversions_request(mut msg_buf: &[u8]) -> Vec<u8> {
     }
 
     // Add data
-    response_msg.put_u8(4); // num api key records + 1
+    // response_msg.put_u8(4); // num api key records + 1
 
-    // Fetch Record = 1 [0:16]
-    response_msg.put_i16(1); // api key
-    response_msg.put_i16(0); // min version
-    response_msg.put_i16(16); // max version
-    response_msg.put_u8(0); // TAG_BUFFER length
+    if let Some(config) = CONFIG.get() {
+        response_msg.put_u8(config.key.len() as u8 + 1);
 
-    // APIVersions Record = 18 [0:4]
-    response_msg.put_i16(18); // api key
-    response_msg.put_i16(0); // min version
-    response_msg.put_i16(4); // max version
-    response_msg.put_i8(0); // TAG_BUFFER length
+        for key in config.key.iter() {
+            response_msg.put_i16(key.key); // api key
+            response_msg.put_i16(key.min_version); // min version
+            response_msg.put_i16(key.max_version); // max version
+            response_msg.put_u8(0); // TAG_BUFFER length
+        }
+    }
+
+    // // Fetch Record = 1 [0:16]
+    // response_msg.put_i16(1); // api key
+    // response_msg.put_i16(0); // min version
+    // response_msg.put_i16(16); // max version
+    // response_msg.put_u8(0); // TAG_BUFFER length
+
+    // // APIVersions Record = 18 [0:4]
+    // response_msg.put_i16(18); // api key
+    // response_msg.put_i16(0); // min version
+    // response_msg.put_i16(4); // max version
+    // response_msg.put_i8(0); // TAG_BUFFER length
     
-    // DescribeTopicPartitions Record = 75 [0:0]
-    response_msg.put_i16(75); // api key
-    response_msg.put_i16(0); // min version
-    response_msg.put_i16(0); // max version
-    response_msg.put_i8(0); // TAG_BUFFER length
+    // // DescribeTopicPartitions Record = 75 [0:0]
+    // response_msg.put_i16(75); // api key
+    // response_msg.put_i16(0); // min version
+    // response_msg.put_i16(0); // max version
+    // response_msg.put_i8(0); // TAG_BUFFER length
 
     // Close Array
     response_msg.put_i32(420); // throttle time ms

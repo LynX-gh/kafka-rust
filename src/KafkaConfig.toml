@@ -1,0 +1,30 @@
+# Contains Kafka API configuration
+
+[api]
+    # Kafka API version
+    version = "2.0.0"
+
+    # Kafka API endpoint
+    endpoint = "http://localhost:8082"
+
+[api_key]
+    # Supported API keys
+    supported_keys = [1, 18, 75]
+
+[[key]]
+# Configuration for Fetch API key
+key = 1
+min_version = 0
+max_version = 16
+
+[[key]]
+# Configuration for APIVersions API key
+key = 18
+min_version = 0
+max_version = 4
+
+[[key]]
+# Configuration for DescribeTopicPartitions API key
+key = 75
+min_version = 0
+max_version = 0
