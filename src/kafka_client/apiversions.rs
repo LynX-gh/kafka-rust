@@ -1,5 +1,6 @@
 use std::io::{Cursor, Read, Write, Error};
 use bytes::{Bytes, BytesMut, Buf, BufMut};
+use toml;
 
 pub fn handle_apiversions_request(mut msg_buf: &[u8]) -> Vec<u8> {
     let mut response_len = vec![];

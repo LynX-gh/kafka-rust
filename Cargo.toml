@@ -21,5 +21,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.59"                                   # error handling
 bytes = "1.3.0"                                     # helps manage buffers
+serde = { version = "1.0.217", features = ["derive"] }
 thiserror = "1.0.32"                                # error handling
 tokio = { version = "1.23.0", features = ["full"] } # async networking
+toml = "0.8.19"
