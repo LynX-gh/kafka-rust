@@ -11,19 +11,19 @@
     # Supported API keys
     supported_keys = [1, 18, 75]
 
-[[key]]
+[[api_key.key]]
 # Configuration for Fetch API key
 key = 1
 min_version = 0
 max_version = 16
 
-[[key]]
+[[api_key.key]]
 # Configuration for APIVersions API key
 key = 18
 min_version = 0
 max_version = 4
 
-[[key]]
+[[api_key.key]]
 # Configuration for DescribeTopicPartitions API key
 key = 75
 min_version = 0

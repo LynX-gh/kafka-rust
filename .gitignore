@@ -11,3 +11,6 @@ target/
 
 # Image files
 *.png
+
+# Test script files
+*.ps1
