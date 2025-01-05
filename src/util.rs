@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use std::fs;
+use tokio::fs;
 
 #[derive(Debug, Deserialize)]
 pub struct ApiKeyDetail {
@@ -28,8 +28,8 @@ pub struct KafkaConfig {
 }
 
 impl KafkaConfig {
-    pub fn new() -> Self {
-        let config_str = fs::read_to_string("src/KafkaConfig.toml").expect("Failed to read config file");
+    pub async fn new() -> Self {
+        let config_str = fs::read_to_string("src/KafkaConfig.toml").await.expect("Failed to read config file");
         toml::from_str(&config_str).expect("Failed to create config")
     }
 }
