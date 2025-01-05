@@ -1,17 +1,19 @@
 use std::io::Error;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
-use bytes::{Bytes, BytesMut, Buf, BufMut};
+// use bytes::{Bytes, BytesMut, Buf, BufMut};
 
 pub mod apiversions;
 pub mod fetch;
 pub mod invalid;
+pub mod describetopicpartitions;
 
 use apiversions::handle_apiversions_request;
 use fetch::handle_fetch_request;
 use invalid::handle_invalid_request;
+use describetopicpartitions::handle_describetopicpartitions_request;
 
-use crate::CONFIG;
+// use crate::CONFIG;
 
 pub async fn handle_client(stream: &mut TcpStream) -> Result<(), Error>{
     while stream.peek(&mut [0; 4]).await.is_ok() {
@@ -24,7 +26,7 @@ pub async fn handle_client(stream: &mut TcpStream) -> Result<(), Error>{
         let msg_buf = read_message_data(stream, msg_len).await?;
         println!("Incoming Message Buffer : {:?}", msg_buf);
 
-        let (api_key, api_version) = parse_message_header(&msg_buf)?;
+        let (api_key, api_version) = parse_message_header(&msg_buf);
         println!("API Key : {}", api_key);
         println!("API Version : {}", api_version);
 
@@ -34,6 +36,9 @@ pub async fn handle_client(stream: &mut TcpStream) -> Result<(), Error>{
             },
             18 => {
                 stream.write(&handle_apiversions_request(&msg_buf)).await?;
+            },
+            75 => {
+                stream.write(&handle_describetopicpartitions_request(&msg_buf)).await?;
             },
             _ => {
                 stream.write(&handle_invalid_request(&msg_buf)).await?;
@@ -57,8 +62,8 @@ async fn read_message_data(stream: &mut TcpStream, msg_len: i32) -> Result<Vec<u
     Ok(msg_buf)
 }
 
-fn parse_message_header(msg_buf: &[u8]) -> Result<(i16, i16), Error> {
+fn parse_message_header(msg_buf: &[u8]) -> (i16, i16) {
     let api_key = i16::from_be_bytes(msg_buf[0..2].try_into().expect("API Key Failed"));
     let api_version = i16::from_be_bytes(msg_buf[2..4].try_into().expect("API Version Failed"));
-    Ok((api_key, api_version))
+    (api_key, api_version)
 }
