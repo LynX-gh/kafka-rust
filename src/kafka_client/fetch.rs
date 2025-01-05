@@ -1,5 +1,5 @@
-use std::io::{Cursor, Read, Write, Error};
-use bytes::{Bytes, BytesMut, Buf, BufMut};
+// use std::io::{Cursor, Read, Write, Error};
+use bytes::{Buf, BufMut};
 
 pub fn handle_fetch_request(mut msg_buf: &[u8]) -> Vec<u8>{
     let mut response_len = vec![];

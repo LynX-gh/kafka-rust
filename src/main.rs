@@ -1,5 +1,4 @@
 #![allow(unused_imports)]
-use std::iter::Once;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::task;
@@ -17,7 +16,7 @@ static CONFIG: OnceCell<Arc<KafkaConfig>> = OnceCell::const_new();
 async fn main() {
     println!("Logs from your program will appear here!");
 
-    CONFIG.set(Arc::new(KafkaConfig::new())).unwrap();
+    CONFIG.set(Arc::new(KafkaConfig::new().await)).unwrap();
 
     let listener = TcpListener::bind("127.0.0.1:9092").await.unwrap();
     handle_incoming_connections(listener).await;
