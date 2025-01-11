@@ -2,8 +2,9 @@ use std::io::{Cursor, Read, Write, Error};
 use bytes::{Bytes, BytesMut, Buf, BufMut};
 
 use crate::CONFIG;
+use super::read_cluster_metadata::read_cluster_metadata;
 
-pub fn handle_describetopicpartitions_request(mut msg_buf: &[u8]) -> Vec<u8> {
+pub async fn handle_describetopicpartitions_request(mut msg_buf: &[u8]) -> Vec<u8> {
     let mut response_len = vec![];
     let mut response_msg = vec![];
 
@@ -11,7 +12,7 @@ pub fn handle_describetopicpartitions_request(mut msg_buf: &[u8]) -> Vec<u8> {
     let _api_key = msg_buf.get_i16();
     let _api_version = msg_buf.get_i16();
     let correlation_id = msg_buf.get_i32();
-    // println!("Corr ID - {}", correlation_id);
+
     let client_id_len = msg_buf.get_i16();
     let mut client_id = Vec::new();
     if client_id_len != -1 {
@@ -21,15 +22,12 @@ pub fn handle_describetopicpartitions_request(mut msg_buf: &[u8]) -> Vec<u8> {
     }
     msg_buf.advance(1); // TAG_BUFFER
 
-    // println!("Client ID Len - {}", client_id_len);
-    // println!("Client ID - {:?}", client_id);
-
     // Read DescribeTopicPartitions Request Body
     let topic_count = msg_buf.get_u8().saturating_sub(1);
+
     let mut topics = Vec::new();
-    // println!("Topics Cnt - {:?}", topic_count);
     for _ in 0..topic_count { 
-        let topic_name_len = msg_buf.get_u8().saturating_sub(1);
+        let topic_name_len = msg_buf.get_u8().saturating_sub(1); // !! COMPACT NULLABLE IN RETURN BUT NOT NULLABLE IN REQUEST WTF !!
 
         let mut topic_name = Vec::new();
         for _ in 0..topic_name_len {
@@ -42,8 +40,12 @@ pub fn handle_describetopicpartitions_request(mut msg_buf: &[u8]) -> Vec<u8> {
     // println!("Topics - {:?}", topics);
 
     let _response_partition_limit = msg_buf.get_i32();
+
     msg_buf.advance(1); // CURSOR
     msg_buf.advance(1); // TAG_BUFFER
+
+    let data = read_cluster_metadata().await.expect("Failed to Read File");
+    println!("{data:?}");
 
     // Resp Header
     response_msg.put_i32(correlation_id); // Add cid
@@ -56,11 +58,12 @@ pub fn handle_describetopicpartitions_request(mut msg_buf: &[u8]) -> Vec<u8> {
     // Topics Array
     for topic in topics {
         response_msg.put_i16(3); // error_code UNKNOWN_TOPIC_OR_PARTITION
-        response_msg.put_u8((topic.len()+1) as u8); // Topic Name Len
-        println!("Topics - {:?}", topic.len() as u8);
+
+        response_msg.put_u8((topic.len()+1) as u8); // Topic Name Len !! COMPACT NULLABLE IN RETURN BUT NOT NULLABLE IN REQUEST WTF !!
         for char in topic {
             response_msg.put_i8(char); // Topic Name
         }
+
         response_msg.put_i128(0); // Topic ID = 0
         response_msg.put_i8(1); // is_internal
         
@@ -69,7 +72,6 @@ pub fn handle_describetopicpartitions_request(mut msg_buf: &[u8]) -> Vec<u8> {
 
         // Continue Topics Array
         response_msg.put_i32(3576); // topic_authorized_operations
-
         response_msg.put_i8(0); // TAG_BUFFER
     }
 

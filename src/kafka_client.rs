@@ -7,6 +7,7 @@ pub mod apiversions;
 pub mod fetch;
 pub mod invalid;
 pub mod describetopicpartitions;
+pub mod read_cluster_metadata;
 
 use apiversions::handle_apiversions_request;
 use fetch::handle_fetch_request;
@@ -32,16 +33,20 @@ pub async fn handle_client(stream: &mut TcpStream) -> Result<(), Error>{
 
         match api_key {
             1 => {
-                stream.write(&handle_fetch_request(&msg_buf)).await?;
+                let response = &handle_fetch_request(&msg_buf);
+                stream.write(response).await?;
             },
             18 => {
-                stream.write(&handle_apiversions_request(&msg_buf)).await?;
+                let response = &handle_apiversions_request(&msg_buf);
+                stream.write(response).await?;
             },
             75 => {
-                stream.write(&handle_describetopicpartitions_request(&msg_buf)).await?;
+                let response = &handle_describetopicpartitions_request(&msg_buf).await;
+                stream.write(response).await?;
             },
             _ => {
-                stream.write(&handle_invalid_request(&msg_buf)).await?;
+                let response = &handle_invalid_request(&msg_buf);
+                stream.write(response).await?;
             }
         }
 
