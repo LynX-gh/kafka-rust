@@ -1,22 +1,22 @@
 #![allow(unused_imports)]
 use std::sync::Arc;
+use std::env;
 use tokio::net::TcpListener;
 use tokio::task;
 use tokio::sync::OnceCell;
 
 pub mod kafka_client;
-pub mod util;
+pub mod load_config;
 
 use kafka_client::handle_client;
-use util::KafkaConfig;
+use load_config::KafkaConfig;
 
-static CONFIG: OnceCell<Arc<KafkaConfig>> = OnceCell::const_new();
+static CONFIG: OnceCell<KafkaConfig> = OnceCell::const_new();
 
 #[tokio::main]
 async fn main() {
+    env::set_var("RUST_BACKTRACE", "1");
     println!("Logs from your program will appear here!");
-
-    CONFIG.set(Arc::new(KafkaConfig::new().await)).unwrap();
 
     let listener = TcpListener::bind("127.0.0.1:9092").await.unwrap();
     handle_incoming_connections(listener).await;

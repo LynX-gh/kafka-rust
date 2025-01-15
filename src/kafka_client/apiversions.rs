@@ -1,9 +1,9 @@
 // use std::io::{Cursor, Read, Write, Error};
 use bytes::{Buf, BufMut};
 
-use crate::CONFIG;
+use crate::{CONFIG, KafkaConfig};
 
-pub fn handle_apiversions_request(mut msg_buf: &[u8]) -> Vec<u8> {
+pub async fn handle_apiversions_request(mut msg_buf: &[u8]) -> Vec<u8> {
     let mut response_len = vec![];
     let mut response_msg = vec![];
 
@@ -23,15 +23,14 @@ pub fn handle_apiversions_request(mut msg_buf: &[u8]) -> Vec<u8> {
     }
 
     // Add data
-    if let Some(config) = CONFIG.get() {
-        response_msg.put_u8(config.api_key.key.len() as u8 + 1);
+    let config = CONFIG.get_or_init(KafkaConfig::new).await;
+    response_msg.put_u8(config.api_key.key.len() as u8 + 1);
 
-        for key in config.api_key.key.iter() {
-            response_msg.put_i16(key.key); // api key
-            response_msg.put_i16(key.min_version); // min version
-            response_msg.put_i16(key.max_version); // max version
-            response_msg.put_u8(0); // TAG_BUFFER length
-        }
+    for key in config.api_key.key.iter() {
+        response_msg.put_i16(key.key); // api key
+        response_msg.put_i16(key.min_version); // min version
+        response_msg.put_i16(key.max_version); // max version
+        response_msg.put_u8(0); // TAG_BUFFER length
     }
 
     // Close Array
