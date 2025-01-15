@@ -7,7 +7,8 @@ pub async fn read_cluster_metadata() -> Result<(), Error>{
 
     let mut contents = vec![];
     file.read_to_end(&mut contents).await?;
-    
+
+    println!("File Data - {:?}", contents);
     println!("len = {}", contents.len());
     Ok(())
 }

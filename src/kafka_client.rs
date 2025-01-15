@@ -37,7 +37,7 @@ pub async fn handle_client(stream: &mut TcpStream) -> Result<(), Error>{
                 stream.write(response).await?;
             },
             18 => {
-                let response = &handle_apiversions_request(&msg_buf);
+                let response = &handle_apiversions_request(&msg_buf).await;
                 stream.write(response).await?;
             },
             75 => {
