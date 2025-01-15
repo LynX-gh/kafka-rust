@@ -9,11 +9,10 @@ target/
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
 
-# Image files
+# Project files
 *.png
-
-# Test script files
 *.ps1
+tmp/
 
 # Rust Rover
 .idea/

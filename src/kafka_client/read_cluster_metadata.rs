@@ -3,6 +3,9 @@ use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 pub async fn read_cluster_metadata() -> Result<(), Error>{
+    let contents = tokio::fs::read_to_string("/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log").await?;
+    println!("File string :{}", contents);
+
     let mut file = File::open("/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log").await?;
 
     let mut contents = vec![];
