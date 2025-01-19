@@ -1,5 +1,3 @@
-#![allow(unused_imports)]
-use std::sync::Arc;
 use std::env;
 use tokio::net::TcpListener;
 use tokio::task;

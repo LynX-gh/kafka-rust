@@ -1,7 +1,6 @@
-use std::io::{Cursor, Read, Write, Error};
-use bytes::{Bytes, BytesMut, Buf, BufMut};
+// use std::io::{Cursor, Read, Write, Error};
+use bytes::{Buf, BufMut};
 
-use crate::CONFIG;
 use super::read_cluster_metadata::read_cluster_metadata;
 
 pub async fn handle_describetopicpartitions_request(mut msg_buf: &[u8]) -> Vec<u8> {
@@ -45,7 +44,7 @@ pub async fn handle_describetopicpartitions_request(mut msg_buf: &[u8]) -> Vec<u
     msg_buf.advance(1); // TAG_BUFFER
 
     let data = read_cluster_metadata().await.expect("Failed to Read File");
-    println!("{data:?}");
+    println!("{data:#?}");
 
     // Resp Header
     response_msg.put_i32(correlation_id); // Add cid
