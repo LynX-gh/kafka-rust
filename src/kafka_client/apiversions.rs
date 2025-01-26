@@ -22,8 +22,10 @@ pub async fn handle_apiversions_request(mut msg_buf: &[u8]) -> Vec<u8> {
         response_msg.put_i16(35);
     }
 
-    // Add data
+    // Get config
     let config = CONFIG.get_or_init(KafkaConfig::new).await;
+
+    // Add data
     response_msg.put_u8(config.api_key.key.len() as u8 + 1);
 
     for key in config.api_key.key.iter() {

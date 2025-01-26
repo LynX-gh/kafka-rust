@@ -2,7 +2,7 @@ use std::io::Error;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use bytes::Buf;
-
+use crate::{CONFIG, KafkaConfig};
 
 #[derive(Debug)]
 pub struct RecordBatch {
@@ -217,7 +217,10 @@ pub struct PartitionMetadata {
 }
 
 pub async fn read_cluster_metadata() -> Result<Vec<RecordBatch>, Error>{
-    let mut file = File::open("/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log").await?;
+    // Get config
+    let config = CONFIG.get_or_init(KafkaConfig::new).await;
+
+    let mut file = File::open(config.metadata.path.clone()).await?;
 
     let mut record_batch = Vec::new();
     let mut offset_buf = [0_u8; 8];

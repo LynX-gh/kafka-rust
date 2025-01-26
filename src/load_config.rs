@@ -21,10 +21,15 @@ pub struct ApiConfig {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct Metadata {
+    pub path: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct KafkaConfig {
     pub api: ApiConfig,
     pub api_key: ApiKey,
-    // pub key: Vec<ApiKeyDetail>
+    pub metadata: Metadata,
 }
 
 impl KafkaConfig {

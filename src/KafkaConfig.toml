@@ -11,6 +11,10 @@
     # Supported API keys
     supported_keys = [1, 18, 75]
 
+[metadata]
+    # Path to cluster metadata file
+    path = "/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log"
+
 [[api_key.key]]
 # Configuration for Fetch API key
 key = 1
