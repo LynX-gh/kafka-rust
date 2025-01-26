@@ -44,7 +44,6 @@ pub async fn handle_describetopicpartitions_request(mut msg_buf: &[u8]) -> Vec<u
     msg_buf.advance(1); // TAG_BUFFER
 
     let data = read_cluster_metadata().await.expect("Failed to Read File");
-    println!("{data:#?}");
     for topic_name in &topics {
         match return_topic_uuid(&data, topic_name) {
             Some(uuid) => {
@@ -102,9 +101,9 @@ pub async fn handle_describetopicpartitions_request(mut msg_buf: &[u8]) -> Vec<u
                                 response_msg.put_u64(*isr);
                             }
                             
-                            response_msg.put_i32(0); // Eligible Leader Replicas
-                            response_msg.put_i32(0); // Last Known ELR
-                            response_msg.put_i32(0); // Offline Replicas
+                            response_msg.put_u8(1); // Eligible Leader Replicas
+                            response_msg.put_u8(1); // Last Known ELR
+                            response_msg.put_u8(1); // Offline Replicas
                             response_msg.put_i8(0); // TAG_BUFFER
                         }
                     },

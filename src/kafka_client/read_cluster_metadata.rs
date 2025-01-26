@@ -25,13 +25,13 @@ pub struct RecordBatch {
 
 #[derive(Debug)]
 pub struct Record {
-    pub length: u8,
+    pub length: i8,
     pub attributes: u8,
     pub timestamp_delta: u8,
     pub offset_delta: i8,
     pub key_length: i8,
     pub key: Option<Vec<u8>>,
-    pub value_length: u8,
+    pub value_length: i8,
     pub value: RecordValue,
     pub headers_array_count: u8,
 }
@@ -103,7 +103,7 @@ impl RecordBatch {
         let mut records = Vec::new();
         println!("Records Len : {records_length:?}");
         for _ in 0..records_length {
-            records.push(Record::new(buf).expect("Metadata Records Read Failed"));
+            records.push(Record::new(&mut buf).expect("Metadata Records Read Failed"));
         }
 
         Ok(RecordBatch {
@@ -126,20 +126,20 @@ impl RecordBatch {
 }
 
 impl Record {
-    fn new(mut buf: &[u8]) -> Result<Self, Error>{
-        let length = buf.get_u8();
+    fn new(buf: &mut &[u8]) -> Result<Self, Error>{
+        let length = get_varint(buf).unwrap();
         let attributes = buf.get_u8();
         let timestamp_delta = buf.get_u8();
         let offset_delta = buf.get_i8();
-        let key_length = buf.get_i8();
-        let key = if key_length == 1 {
+        let key_length = get_varint(buf).unwrap();
+        let key = if key_length == -1 {
             None
         } else {
             let mut key = vec![0; key_length as usize];
             buf.copy_to_slice(&mut key);
             Some(key)
         };
-        let value_length = buf.get_u8();
+        let value_length = get_varint(buf).unwrap();
         let value = Self::new_record_value(buf).expect("Metadata Record Value Read Failed");
         let headers_array_count = buf.get_u8();
 
@@ -156,7 +156,7 @@ impl Record {
         })
     }
 
-    fn new_record_value(mut buf: &[u8]) -> Result<RecordValue, Error> {
+    fn new_record_value(buf: &mut &[u8]) -> Result<RecordValue, Error> {
         let frame_version = buf.get_u8();
         let value_type = buf.get_u8();
         let version = buf.get_u8();
@@ -275,4 +275,16 @@ pub fn describe_metadata_topic_partitions(metadata: &Vec<RecordBatch>, topic_uui
     } else {
         Some(partitions_metadata)
     }
+}
+
+fn get_varint(buf: &mut &[u8]) -> Result<i8, Error>{
+    let buffer = [buf.get_u8()];
+    let x = i8::from_be_bytes(buffer);
+    if x < 0 {
+        let _buffer = [buf.get_u8()];
+        let y = (x as u8) as i16;
+        let c = (y >> 1) ^ -(y & 1);
+        return Ok(c as i8);
+    }
+    Ok((x >> 1) ^ -(x & 1))
 }
