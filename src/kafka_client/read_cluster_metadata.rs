@@ -126,7 +126,7 @@ impl RecordBatch {
 }
 
 impl Record {
-    pub fn new(mut buf: &[u8]) -> Result<Self, Error>{
+    fn new(mut buf: &[u8]) -> Result<Self, Error>{
         let length = buf.get_u8();
         let attributes = buf.get_u8();
         let timestamp_delta = buf.get_u8();
@@ -156,7 +156,7 @@ impl Record {
         })
     }
 
-    pub fn new_record_value(mut buf: &[u8]) -> Result<RecordValue, Error> {
+    fn new_record_value(mut buf: &[u8]) -> Result<RecordValue, Error> {
         let frame_version = buf.get_u8();
         let value_type = buf.get_u8();
         let version = buf.get_u8();
@@ -207,6 +207,15 @@ impl Record {
     }
 }
 
+#[derive(Debug)]
+pub struct PartitionMetadata {
+    pub partition_id: u32,
+    pub leader: u32,
+    pub leader_epoch: u32,
+    pub replicas: Vec<u64>,
+    pub isr: Vec<u64>,
+}
+
 pub async fn read_cluster_metadata() -> Result<Vec<RecordBatch>, Error>{
     let mut file = File::open("/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log").await?;
 
@@ -227,4 +236,43 @@ pub async fn read_cluster_metadata() -> Result<Vec<RecordBatch>, Error>{
     }
 
     Ok(record_batch)
+}
+
+pub fn return_topic_uuid(metadata: &Vec<RecordBatch>, topic_name: &[u8]) -> Option<i128> {
+    for batch in metadata {
+        for record in &batch.records {
+            if let RecordValue::TopicRecord(topic_record) = &record.value {
+                if topic_record.topic_name == topic_name {
+                    return Some(topic_record.topic_uuid);
+                }
+            }
+        }
+    }
+    None
+}
+
+pub fn describe_metadata_topic_partitions(metadata: &Vec<RecordBatch>, topic_uuid: i128) -> Option<Vec<PartitionMetadata>> {
+    let mut partitions_metadata = Vec::new();
+
+    for batch in metadata {
+        for record in &batch.records {
+            if let RecordValue::PartitionRecord(partition_record) = &record.value {
+                if partition_record.topic_uuid == topic_uuid {
+                    partitions_metadata.push(PartitionMetadata {
+                        partition_id: partition_record.partition_id,
+                        leader: partition_record.leader,
+                        leader_epoch: partition_record.leader_epoch,
+                        replicas: partition_record.replica_array.clone(),
+                        isr: partition_record.in_sync_replica_array.clone(),
+                    });
+                }
+            }
+        }
+    }
+
+    if partitions_metadata.is_empty() {
+        None
+    } else {
+        Some(partitions_metadata)
+    }
 }
