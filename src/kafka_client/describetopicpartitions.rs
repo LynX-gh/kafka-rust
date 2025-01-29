@@ -44,17 +44,17 @@ pub async fn handle_describetopicpartitions_request(mut msg_buf: &[u8]) -> Vec<u
     msg_buf.advance(1); // TAG_BUFFER
 
     let data = read_cluster_metadata().await.expect("Failed to Read File");
-    for topic_name in &topics {
-        match return_topic_uuid(&data, topic_name) {
-            Some(uuid) => {
-                let partition_data = describe_metadata_topic_partitions(&data, uuid);
-                println!("{partition_data:?}");
-            },
-            None => {
-                println!("Topic Partitions Not Available")
-            }
-        }
-    }
+    // for topic_name in &topics {
+    //     match return_topic_uuid(&data, topic_name) {
+    //         Some(uuid) => {
+    //             let partition_data = describe_metadata_topic_partitions(&data, uuid);
+    //             println!("{partition_data:?}");
+    //         },
+    //         None => {
+    //             println!("Topic Partitions Not Available")
+    //         }
+    //     }
+    // }
 
     // Resp Header
     response_msg.put_i32(correlation_id); // Add cid
@@ -81,6 +81,7 @@ pub async fn handle_describetopicpartitions_request(mut msg_buf: &[u8]) -> Vec<u
                 // Partitions Array
                 match describe_metadata_topic_partitions(&data, topic_uuid) {
                     Some(partition_data) => {
+                        println!("{partition_data:?}");
                         response_msg.put_u8(partition_data.len() as u8 + 1);
 
                         for data in partition_data {
@@ -108,6 +109,7 @@ pub async fn handle_describetopicpartitions_request(mut msg_buf: &[u8]) -> Vec<u
                         }
                     },
                     None => {
+                        println!("Topic Partitions Not Available");
                         response_msg.put_u8(1); // num partitions + 1
                     }
                 }

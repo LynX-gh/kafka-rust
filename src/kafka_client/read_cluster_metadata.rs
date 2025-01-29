@@ -127,11 +127,11 @@ impl RecordBatch {
 
 impl Record {
     fn new(buf: &mut &[u8]) -> Result<Self, Error>{
-        let length = get_varint(buf).unwrap();
+        let length = get_varint(buf)?;
         let attributes = buf.get_u8();
         let timestamp_delta = buf.get_u8();
         let offset_delta = buf.get_i8();
-        let key_length = get_varint(buf).unwrap();
+        let key_length = get_varint(buf)?;
         let key = if key_length == -1 {
             None
         } else {
@@ -139,7 +139,7 @@ impl Record {
             buf.copy_to_slice(&mut key);
             Some(key)
         };
-        let value_length = get_varint(buf).unwrap();
+        let value_length = get_varint(buf)?;
         let value = Self::new_record_value(buf).expect("Metadata Record Value Read Failed");
         let headers_array_count = buf.get_u8();
 

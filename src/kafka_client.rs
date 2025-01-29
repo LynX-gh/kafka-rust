@@ -8,6 +8,7 @@ pub mod fetch;
 pub mod invalid;
 pub mod describetopicpartitions;
 pub mod read_cluster_metadata;
+pub mod utils;
 
 use apiversions::handle_apiversions_request;
 use fetch::handle_fetch_request;
