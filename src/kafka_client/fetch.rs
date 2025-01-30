@@ -1,22 +1,13 @@
 // use std::io::{Cursor, Read, Write, Error};
 use bytes::{Buf, BufMut};
 
+use crate::kafka_client::utils;
+
 pub fn handle_fetch_request(mut msg_buf: &[u8]) -> Vec<u8>{
-    let mut response_len = vec![];
     let mut response_msg = vec![];
 
     // Read Fetch Request Header
-    let _api_key = msg_buf.get_i16();
-    let api_version = msg_buf.get_i16();
-    let correlation_id = msg_buf.get_i32();
-    let client_id_len = msg_buf.get_i16();
-    let mut client_id = Vec::new();
-    if client_id_len != -1 {
-        for _ in 0..client_id_len {
-            client_id.push(msg_buf.get_i8());
-        }
-    }
-    msg_buf.advance(1); // TAG_BUFFER
+    let (_, api_version, correlation_id, client_id) = utils::read_request_header_v2(&mut msg_buf);
     
     // Read Fetch Request Body
     let _max_wait_ms = msg_buf.get_i32();
@@ -28,7 +19,6 @@ pub fn handle_fetch_request(mut msg_buf: &[u8]) -> Vec<u8>{
 
     let topic_count = msg_buf.get_u8().saturating_sub(1);
     let mut topics = Vec::new();
-    println!("Client ID Len - {}", client_id_len);
     println!("Client ID - {:?}", client_id);
     println!("Corr ID - {}", correlation_id);
     println!("Topic Cnt - {}", topic_count);
@@ -51,8 +41,7 @@ pub fn handle_fetch_request(mut msg_buf: &[u8]) -> Vec<u8>{
     println!("Topics - {:?}", topics);
 
     // Resp Header
-    response_msg.put_i32(correlation_id); // Add cid
-    response_msg.put_i8(0); // TAG_BUFFER length
+    utils::write_resp_header_v1(&mut response_msg, correlation_id);
 
     // Resp Body
     response_msg.put_i32(0); // throttle time ms
@@ -99,9 +88,7 @@ pub fn handle_fetch_request(mut msg_buf: &[u8]) -> Vec<u8>{
     response_msg.put_i8(0); // TAG_BUFFER length
 
     // calc msg size
-    let message_size = response_msg.len();
-    response_len.put_i32(message_size as i32);
-    response_len.extend(response_msg);
+    utils::append_msg_len(&mut response_msg);
 
-    response_len
+    response_msg
 }
