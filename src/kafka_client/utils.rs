@@ -1,7 +1,10 @@
 use bytes::{Buf, BufMut};
 
-pub fn append_msg_len(buf: &mut Vec<u8>) {
-    buf.put_i32(buf.len() as i32);
+pub fn append_msg_len(buf: &mut [u8]) -> Vec<u8> {
+    let mut final_response = Vec::new();
+    final_response.put_i32(buf.len() as i32);
+    final_response.extend(buf.iter());
+    final_response
 }
 
 pub fn read_request_header_v0(buf: &mut &[u8]) -> (i16, i16, i32) {

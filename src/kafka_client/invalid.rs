@@ -16,7 +16,5 @@ pub fn handle_invalid_request(mut msg_buf: &[u8]) -> Vec<u8> {
     response_msg.put_i16(42);
 
     // calc msg size
-    utils::append_msg_len(&mut response_msg);
-
-    response_msg
+    utils::append_msg_len(&mut response_msg)
 }

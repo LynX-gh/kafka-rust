@@ -39,8 +39,6 @@ pub async fn handle_apiversions_request(mut msg_buf: &[u8]) -> Vec<u8> {
     response_msg.put_i32(420); // throttle time ms
     response_msg.put_i8(0); // TAG_BUFFER length
 
-    // calc msg size
-    utils::append_msg_len(&mut response_msg);
-
-    response_msg
+    // calc msg size and return response
+    utils::append_msg_len(&mut response_msg)
 }
