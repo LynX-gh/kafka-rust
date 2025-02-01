@@ -241,6 +241,19 @@ pub async fn read_cluster_metadata() -> Result<Vec<RecordBatch>, Error>{
     Ok(record_batch)
 }
 
+pub fn check_topic_id_exists(metadata: &Vec<RecordBatch>, topic_uuid: i128) -> bool {
+    for batch in metadata {
+        for record in &batch.records {
+            if let RecordValue::TopicRecord(topic_record) = &record.value {
+                if topic_record.topic_uuid == topic_uuid {
+                    return true
+                }
+            }
+        }
+    }
+    false
+}
+
 pub fn return_topic_uuid(metadata: &Vec<RecordBatch>, topic_name: &[u8]) -> Option<i128> {
     for batch in metadata {
         for record in &batch.records {

@@ -1,9 +1,9 @@
 // use std::io::{Cursor, Read, Write, Error};
 use bytes::{Buf, BufMut};
 
-use crate::kafka_client::utils;
+use super::{read_cluster_metadata::{read_cluster_metadata, check_topic_id_exists}, utils};
 
-pub fn handle_fetch_request(mut msg_buf: &[u8]) -> Vec<u8>{
+pub async fn handle_fetch_request(mut msg_buf: &[u8]) -> Vec<u8>{
     let mut response_msg = vec![];
 
     // Read Fetch Request Header
@@ -40,6 +40,8 @@ pub fn handle_fetch_request(mut msg_buf: &[u8]) -> Vec<u8>{
 
     println!("Topics - {:?}", topics);
 
+    let data = read_cluster_metadata().await.expect("Failed to Read File");
+
     // Resp Header
     utils::write_resp_header_v1(&mut response_msg, correlation_id);
 
@@ -64,7 +66,13 @@ pub fn handle_fetch_request(mut msg_buf: &[u8]) -> Vec<u8>{
         // Partitions Array
         response_msg.put_u8(2); // num partitions + 1
         response_msg.put_i32(0); // partition_index
-        response_msg.put_i16(0); // error_code
+
+        if check_topic_id_exists(&data, topic) {
+            response_msg.put_i16(0); // error_code
+        } else {
+            response_msg.put_i16(100); // error_code
+        }
+
         response_msg.put_i64(0); // high_watermark
         response_msg.put_i64(0); // last_stable_offset
         response_msg.put_i64(0); // log_start_offset

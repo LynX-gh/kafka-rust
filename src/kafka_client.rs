@@ -34,7 +34,7 @@ pub async fn handle_client(stream: &mut TcpStream) -> Result<(), Error>{
 
         match api_key {
             1 => {
-                let response = &handle_fetch_request(&msg_buf);
+                let response = &handle_fetch_request(&msg_buf).await;
                 stream.write(response).await?;
             },
             18 => {
