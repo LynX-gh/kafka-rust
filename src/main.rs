@@ -6,10 +6,11 @@ use tokio::sync::OnceCell;
 pub mod kafka_client;
 pub mod load_config;
 
-use kafka_client::handle_client;
+use kafka_client::{handle_client, read_cluster_metadata::RecordBatch};
 use load_config::KafkaConfig;
 
 static CONFIG: OnceCell<KafkaConfig> = OnceCell::const_new();
+static METADATA: OnceCell<Vec<RecordBatch>> = OnceCell::const_new();
 
 #[tokio::main]
 async fn main() {

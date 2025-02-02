@@ -1,15 +1,63 @@
 // use std::io::{Cursor, Read, Write, Error};
 use bytes::{Buf, BufMut};
 
+use crate::METADATA;
 use crate::kafka_client::read_cluster_metadata::return_topic_name;
 
 use super::{read_cluster_metadata::{read_cluster_metadata, check_topic_id_exists}, utils, read_message_log};
+
+#[derive(Debug, Clone)]
+struct FetchTopics {
+    topic_id: i128,
+    partitions: Vec<Partition>
+}
+
+#[derive(Debug, Clone)]
+struct Partition {
+    partition_idx: i32,
+    _current_leader_epoch: i32,
+    _fetch_offset: i64,
+    _last_fetched_epoch: i32,
+    log_start_offset: i64,
+    _partition_max_bytes: i32,
+}
+
+impl FetchTopics {
+    fn new (buf: &mut &[u8]) -> Self {
+        let mut res = Self {
+            topic_id: buf.get_i128(),
+            partitions: Vec::new(),
+        };
+
+        let partition_count = buf.get_u8().saturating_sub(1);
+        for _ in 0..partition_count {
+            res.partitions.push(Partition::new(buf));
+        }
+        res
+    }
+}
+
+impl Partition {
+    fn new(buf: &mut &[u8]) -> Self {
+        let res = Self {
+            partition_idx: buf.get_i32(),
+            _current_leader_epoch: buf.get_i32(),
+            _fetch_offset: buf.get_i64(),
+            _last_fetched_epoch: buf.get_i32(),
+            log_start_offset: buf.get_i64(),
+            _partition_max_bytes: buf.get_i32(),
+        };
+
+        buf.advance(1); // TAG_BUFFER
+        res
+    }
+}
 
 pub async fn handle_fetch_request(mut msg_buf: &[u8]) -> Vec<u8>{
     let mut response_msg = vec![];
 
     // Read Fetch Request Header
-    let (_, api_version, correlation_id, client_id) = utils::read_request_header_v2(&mut msg_buf);
+    let (_, api_version, correlation_id, _) = utils::read_request_header_v2(&mut msg_buf);
     
     // Read Fetch Request Body
     let _max_wait_ms = msg_buf.get_i32();
@@ -21,31 +69,15 @@ pub async fn handle_fetch_request(mut msg_buf: &[u8]) -> Vec<u8>{
 
     let topic_count = msg_buf.get_u8().saturating_sub(1);
     let mut topics = Vec::new();
-    let mut partitions = Vec::new();
+
     for _ in 0..topic_count {
-        let topic_id = msg_buf.get_i128();
-        let partition_count = msg_buf.get_u8().saturating_sub(1);
-        for _ in 0..partition_count {
-            let partition = msg_buf.get_i32();
-            let _current_leader_epoch = msg_buf.get_i32();
-            let _fetch_offset = msg_buf.get_i64();
-            let _last_fetched_epoch = msg_buf.get_i32();
-            let _log_start_offset = msg_buf.get_i64();
-            let _partition_max_bytes = msg_buf.get_i32();
-            msg_buf.advance(1); // TAG_BUFFER
-            partitions.push(partition);
-        }
+        topics.push(FetchTopics::new(&mut msg_buf));
         msg_buf.advance(1); // TAG_BUFFER
-        topics.push(topic_id);
     }
 
-    println!("Client ID - {:?}", client_id);
-    println!("Corr ID - {}", correlation_id);
-    println!("Topic Cnt - {}", topic_count);
     println!("Topics - {:?}", topics);
-    println!("Partitions - {:?}", partitions);
 
-    let data = read_cluster_metadata().await.expect("Failed to Read File");
+    let data = METADATA.get_or_init(read_cluster_metadata).await;
     // println!("Data - \n{:#?}", data);
 
     // Resp Header
@@ -67,60 +99,52 @@ pub async fn handle_fetch_request(mut msg_buf: &[u8]) -> Vec<u8>{
 
     // Responses Array
     for topic in topics {
-        response_msg.put_i128(topic);
+        response_msg.put_i128(topic.topic_id);
 
         // Partitions Array
-        response_msg.put_u8(2); // num partitions + 1
-        response_msg.put_i32(0); // partition_index
+        response_msg.put_u8(topic.partitions.len() as u8 + 1); // num partitions + 1
 
-        if check_topic_id_exists(&data, topic) {
-            response_msg.put_i16(0); // error_code
-        } else {
-            response_msg.put_i16(100); // error_code
-        }
+        for partition in topic.partitions {
+            response_msg.put_i32(partition.partition_idx); // partition_index
 
-        response_msg.put_i64(0); // high_watermark
-        response_msg.put_i64(0); // last_stable_offset
-        response_msg.put_i64(0); // log_start_offset
-
-        // Aborted Transactions Array
-        response_msg.put_u8(0); // num aborted_transactions
-
-        // Continue Partitions Array
-        response_msg.put_i32(0); // preferred_read_replica
-
-        // Records Compact Array
-        match return_topic_name(&data, topic) {
-            Some(Ok(topic_name)) => {
-                match read_message_log::read_messages(&topic_name, 0).await {
-                    Some(record_batch) => {
-                        response_msg.put_u8(record_batch.len() as u8 + 1); // total size of records + 1
-                        response_msg.extend(record_batch);
-                    },
-                    None => {
-                        response_msg.put_u8(1); // num records + 1
-                    }
-                }
-            },
-            _ => {
-                response_msg.put_u8(1); // num records + 1
+            if check_topic_id_exists(&data, topic.topic_id) {
+                response_msg.put_i16(0); // error_code
+            } else {
+                response_msg.put_i16(100); // error_code
             }
+
+            response_msg.put_i64(0); // high_watermark
+            response_msg.put_i64(0); // last_stable_offset
+            response_msg.put_i64(partition.log_start_offset); // log_start_offset
+
+            // Aborted Transactions Array
+            response_msg.put_u8(0); // num aborted_transactions
+
+            // Continue Partitions Array
+            response_msg.put_i32(0); // preferred_read_replica
+
+            // Records Compact Array from File
+            match return_topic_name(&data, topic.topic_id) {
+                Some(Ok(topic_name)) => {
+                    match read_message_log::read_messages(&topic_name, 0).await {
+                        Some(record_batch) => {
+                            response_msg.put_u8(record_batch.len() as u8 + 1); // total size of records + 1
+                            response_msg.extend(record_batch);
+                        },
+                        None => {
+                            response_msg.put_u8(1); // num records + 1
+                        }
+                    }
+                },
+                _ => {
+                    response_msg.put_u8(1); // num records + 1
+                }
+            }
+
+            // Continue Partitions Array
+            response_msg.put_i8(0); // TAG_BUFFER
         }
-
-        // if let Some(record_batches) = fetch_metadata_topic_recordbatch(&data, topic) {
-        //     let mut response_record_batch = Vec::new();
-        //     for record_batch in record_batches {
-        //         println!("{:#?}",record_batch);
-        //         record_batch.write(&mut response_record_batch);
-        //     }
-        //     response_msg.put_u8(response_record_batch.len() as u8 + 1); // total length of records + 1
-        //     response_msg.extend(response_record_batch);
-        // } else {
-        //     response_msg.put_u8(1); // num records + 1
-        // }
-
-        // Continue Partitions Array
-        response_msg.put_i8(0); // TAG_BUFFER
+        
 
         // Continue Responses Array
         response_msg.put_i8(0); // TAG_BUFFER

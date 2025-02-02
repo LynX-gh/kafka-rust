@@ -1,5 +1,6 @@
 // use std::io::{Cursor, Read, Write, Error};
 use bytes::{Buf, BufMut};
+use crate::METADATA;
 
 use super::{read_cluster_metadata::{describe_metadata_topic_partitions, read_cluster_metadata, return_topic_uuid}, utils};
 
@@ -31,18 +32,7 @@ pub async fn handle_describetopicpartitions_request(mut msg_buf: &[u8]) -> Vec<u
     msg_buf.advance(1); // CURSOR
     msg_buf.advance(1); // TAG_BUFFER
 
-    let data = read_cluster_metadata().await.expect("Failed to Read File");
-    // for topic_name in &topics {
-    //     match return_topic_uuid(&data, topic_name) {
-    //         Some(uuid) => {
-    //             let partition_data = describe_metadata_topic_partitions(&data, uuid);
-    //             println!("{partition_data:?}");
-    //         },
-    //         None => {
-    //             println!("Topic Partitions Not Available")
-    //         }
-    //     }
-    // }
+    let data = METADATA.get_or_init(read_cluster_metadata).await;
 
     // Resp Header
     utils::write_resp_header_v1(&mut response_msg, correlation_id);
@@ -53,8 +43,6 @@ pub async fn handle_describetopicpartitions_request(mut msg_buf: &[u8]) -> Vec<u
 
     // Topics Array
     for topic in &topics {
-        // response_msg.put_i16(3); // error_code UNKNOWN_TOPIC_OR_PARTITION
-
         match return_topic_uuid(&data, topic) {
             Some(topic_uuid) => {
                 response_msg.put_i16(0);

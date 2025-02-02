@@ -217,11 +217,11 @@ pub struct PartitionMetadata {
     pub isr: Vec<u64>,
 }
 
-pub async fn read_cluster_metadata() -> Result<Vec<RecordBatch>, Error>{
+pub async fn read_cluster_metadata() -> Vec<RecordBatch>{
     // Get config
     let config = CONFIG.get_or_init(KafkaConfig::new).await;
 
-    let mut file = File::open(format!("{}{}", config.metadata.directory.clone(), config.metadata.path.clone())).await?;
+    let mut file = File::open(format!("{}{}", config.metadata.directory.clone(), config.metadata.path.clone())).await.expect("Metadata File Open Failed");
 
     let mut record_batch = Vec::new();
     let mut offset_buf = [0_u8; 8];
@@ -239,7 +239,7 @@ pub async fn read_cluster_metadata() -> Result<Vec<RecordBatch>, Error>{
         record_batch.push(RecordBatch::new(&mut msg_buf, u32::from_be_bytes(len_buf), u64::from_be_bytes(offset_buf)).expect("Metadata Record Batch Read Failed"));
     }
 
-    Ok(record_batch)
+    record_batch
 }
 
 pub fn check_topic_id_exists(metadata: &Vec<RecordBatch>, topic_uuid: i128) -> bool {
@@ -318,12 +318,3 @@ fn get_varint(buf: &mut &[u8]) -> Result<i8, Error>{
     }
     Ok((x >> 1) ^ -(x & 1))
 }
-
-// fn put_varint(buf: &mut Vec<u8>, value: i8) {
-//     let mut x = ((value << 1) ^ (value >> 7)) as u8;
-//     while x & 0x80 != 0 {
-//         buf.put_u8((x & 0x7F) | 0x80);
-//         x >>= 7;
-//     }
-//     buf.put_u8(x);
-// }
