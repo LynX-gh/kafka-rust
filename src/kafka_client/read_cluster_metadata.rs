@@ -1,10 +1,10 @@
-use std::io::Error;
+use std::{io::Error, string::FromUtf8Error};
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use bytes::Buf;
 use crate::{CONFIG, KafkaConfig};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RecordBatch {
     pub offset: u64,
     pub length: u32,
@@ -23,7 +23,7 @@ pub struct RecordBatch {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Record {
     pub length: i8,
     pub attributes: u8,
@@ -37,7 +37,7 @@ pub struct Record {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum RecordValue {
     FeatureLevelRecord(FeatureLevelRecord),
     TopicRecord(TopicRecord),
@@ -45,7 +45,7 @@ pub enum RecordValue {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FeatureLevelRecord {
     pub frame_version: u8,
     pub value_type: u8,
@@ -56,7 +56,7 @@ pub struct FeatureLevelRecord {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TopicRecord {
     pub frame_version: u8,
     pub value_type: u8,
@@ -67,7 +67,7 @@ pub struct TopicRecord {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PartitionRecord {
     pub frame_version: u8,
     pub value_type: u8,
@@ -87,7 +87,6 @@ pub struct PartitionRecord {
 
 impl RecordBatch {
     pub fn new(mut buf: &[u8], batch_len: u32, batch_offset: u64) -> Result<Self, Error>{
-        // buf.advance(3);
         let parition_leader_epoch = buf.get_u32();
         let magic_byte = buf.get_u8();
         let crc = buf.get_i32();
@@ -140,7 +139,7 @@ impl Record {
             Some(key)
         };
         let value_length = get_varint(buf)?;
-        let value = Self::new_record_value(buf).expect("Metadata Record Value Read Failed");
+        let value = RecordValue::new_record_value(buf).expect("Metadata Record Value Read Failed");
         let headers_array_count = buf.get_u8();
 
         Ok(Record {
@@ -155,7 +154,9 @@ impl Record {
             headers_array_count,
         })
     }
+}
 
+impl RecordValue {
     fn new_record_value(buf: &mut &[u8]) -> Result<RecordValue, Error> {
         let frame_version = buf.get_u8();
         let value_type = buf.get_u8();
@@ -220,7 +221,7 @@ pub async fn read_cluster_metadata() -> Result<Vec<RecordBatch>, Error>{
     // Get config
     let config = CONFIG.get_or_init(KafkaConfig::new).await;
 
-    let mut file = File::open(config.metadata.path.clone()).await?;
+    let mut file = File::open(format!("{}{}", config.metadata.directory.clone(), config.metadata.path.clone())).await?;
 
     let mut record_batch = Vec::new();
     let mut offset_buf = [0_u8; 8];
@@ -252,6 +253,19 @@ pub fn check_topic_id_exists(metadata: &Vec<RecordBatch>, topic_uuid: i128) -> b
         }
     }
     false
+}
+
+pub fn return_topic_name(metadata: &Vec<RecordBatch>, topic_uuid: i128) -> Option<Result<String, FromUtf8Error>> {
+    for batch in metadata {
+        for record in &batch.records {
+            if let RecordValue::TopicRecord(topic_record) = &record.value {
+                if topic_record.topic_uuid == topic_uuid {
+                    return Some(String::from_utf8(topic_record.topic_name.clone()));
+                }
+            }
+        }
+    }
+    None
 }
 
 pub fn return_topic_uuid(metadata: &Vec<RecordBatch>, topic_name: &[u8]) -> Option<i128> {
@@ -304,3 +318,12 @@ fn get_varint(buf: &mut &[u8]) -> Result<i8, Error>{
     }
     Ok((x >> 1) ^ -(x & 1))
 }
+
+// fn put_varint(buf: &mut Vec<u8>, value: i8) {
+//     let mut x = ((value << 1) ^ (value >> 7)) as u8;
+//     while x & 0x80 != 0 {
+//         buf.put_u8((x & 0x7F) | 0x80);
+//         x >>= 7;
+//     }
+//     buf.put_u8(x);
+// }
