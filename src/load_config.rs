@@ -22,6 +22,7 @@ pub struct ApiConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct Metadata {
+    pub directory: String,
     pub path: String,
 }
 
