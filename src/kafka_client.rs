@@ -9,6 +9,7 @@ pub mod invalid;
 pub mod describetopicpartitions;
 pub mod read_cluster_metadata;
 pub mod utils;
+pub mod read_message_log;
 
 use apiversions::handle_apiversions_request;
 use fetch::handle_fetch_request;
