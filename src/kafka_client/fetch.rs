@@ -124,22 +124,25 @@ pub async fn handle_fetch_request(mut msg_buf: &[u8]) -> Vec<u8>{
             response_msg.put_i32(0); // preferred_read_replica
 
             // Records Compact Array from File
+            let mut records_data = Vec::new();
             match return_topic_name(&data, topic.topic_id) {
                 Some(Ok(topic_name)) => {
                     match read_message_log::read_messages(&topic_name, 0).await {
                         Some(record_batch) => {
-                            response_msg.put_u8(record_batch.len() as u8 + 1); // total size of records + 1
-                            response_msg.extend(record_batch);
+                            records_data.extend(record_batch);
                         },
                         None => {
-                            response_msg.put_u8(1); // num records + 1
+                            records_data.put_u8(1); // num records + 1
                         }
                     }
                 },
                 _ => {
-                    response_msg.put_u8(1); // num records + 1
+                    records_data.put_u8(1); // num records + 1
                 }
             }
+
+            response_msg.put_u8(records_data.len() as u8 + 1); // total size of records + 1
+            response_msg.extend(records_data);
 
             // Continue Partitions Array
             response_msg.put_i8(0); // TAG_BUFFER
