@@ -1,5 +1,14 @@
 use bytes::{Buf, BufMut};
 
+pub fn put_varint(buf: &mut Vec<u8>, value: i8) {
+    let mut x = ((value << 1) ^ (value >> 7)) as u8;
+    while x & 0x80 != 0 {
+        buf.put_u8((x & 0x7F) | 0x80);
+        x >>= 7;
+    }
+    buf.put_u8(x);
+}
+
 pub fn append_msg_len(buf: &mut [u8]) -> Vec<u8> {
     let mut final_response = Vec::new();
     final_response.put_i32(buf.len() as i32);

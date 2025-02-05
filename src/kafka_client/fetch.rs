@@ -4,7 +4,7 @@ use bytes::{Buf, BufMut};
 use crate::METADATA;
 use crate::kafka_client::read_cluster_metadata::return_topic_name;
 
-use super::{read_cluster_metadata::{read_cluster_metadata, check_topic_id_exists}, utils, read_message_log};
+use super::{read_cluster_metadata::{check_topic_id_exists, read_cluster_metadata, RecordBatch}, read_message_log, utils};
 
 #[derive(Debug, Clone)]
 struct FetchTopics {
@@ -24,16 +24,12 @@ struct Partition {
 
 impl FetchTopics {
     fn new (buf: &mut &[u8]) -> Self {
-        let mut res = Self {
-            topic_id: buf.get_i128(),
-            partitions: Vec::new(),
-        };
-
+        let topic_id = buf.get_i128();
         let partition_count = buf.get_u8().saturating_sub(1);
-        for _ in 0..partition_count {
-            res.partitions.push(Partition::new(buf));
-        }
-        res
+        let partitions = (0..partition_count).map(|_| Partition::new(buf)).collect();
+        buf.advance(1);
+
+        Self { topic_id, partitions }
     }
 }
 
@@ -68,12 +64,12 @@ pub async fn handle_fetch_request(mut msg_buf: &[u8]) -> Vec<u8>{
     let _session_epoch = msg_buf.get_i32();
 
     let topic_count = msg_buf.get_u8().saturating_sub(1);
-    let mut topics = Vec::new();
+    let topics: Vec<FetchTopics> = (0..topic_count).map(|_| FetchTopics::new(&mut msg_buf)).collect();
 
-    for _ in 0..topic_count {
-        topics.push(FetchTopics::new(&mut msg_buf));
-        msg_buf.advance(1); // TAG_BUFFER
-    }
+    // for _ in 0..topic_count {
+    //     topics.push(FetchTopics::new(&mut msg_buf));
+    //     msg_buf.advance(1); // TAG_BUFFER
+    // }
 
     println!("Topics - {:?}", topics);
 
@@ -107,11 +103,7 @@ pub async fn handle_fetch_request(mut msg_buf: &[u8]) -> Vec<u8>{
         for partition in topic.partitions {
             response_msg.put_i32(partition.partition_idx); // partition_index
 
-            if check_topic_id_exists(&data, topic.topic_id) {
-                response_msg.put_i16(0); // error_code
-            } else {
-                response_msg.put_i16(100); // error_code
-            }
+            response_msg.put_i16(if check_topic_id_exists(&data, topic.topic_id) { 0 } else { 100 }); // error_code
 
             response_msg.put_i64(0); // high_watermark
             response_msg.put_i64(0); // last_stable_offset
@@ -124,24 +116,8 @@ pub async fn handle_fetch_request(mut msg_buf: &[u8]) -> Vec<u8>{
             response_msg.put_i32(0); // preferred_read_replica
 
             // Records Compact Array from File
-            let mut records_data = Vec::new();
-            match return_topic_name(&data, topic.topic_id) {
-                Some(Ok(topic_name)) => {
-                    match read_message_log::read_messages(&topic_name, 0).await {
-                        Some(record_batch) => {
-                            records_data.extend(record_batch);
-                        },
-                        None => {
-                            records_data.put_u8(1); // num records + 1
-                        }
-                    }
-                },
-                _ => {
-                    records_data.put_u8(1); // num records + 1
-                }
-            }
-
-            response_msg.put_u8(records_data.len() as u8 + 1); // total size of records + 1
+            let records_data = write_records_from_file(data, topic.topic_id, partition.partition_idx).await;
+            utils::put_varint(&mut response_msg, records_data.len() as i8 + 1); // total size of records + 1
             response_msg.extend(records_data);
 
             // Continue Partitions Array
@@ -157,4 +133,14 @@ pub async fn handle_fetch_request(mut msg_buf: &[u8]) -> Vec<u8>{
 
     // calc msg size
     utils::append_msg_len(&mut response_msg)
+}
+
+async fn write_records_from_file(data: &[RecordBatch], topic_id: i128, partition_idx: i32) -> Vec<u8> {
+    let mut res = Vec::new();
+    if let Some(Ok(topic_name)) = return_topic_name(data, topic_id) {
+        if let Some(record_batch) = read_message_log::read_messages(&topic_name, partition_idx).await {
+            res.extend(record_batch);
+        }
+    }
+    res
 }

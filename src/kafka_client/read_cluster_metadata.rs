@@ -242,7 +242,7 @@ pub async fn read_cluster_metadata() -> Vec<RecordBatch>{
     record_batch
 }
 
-pub fn check_topic_id_exists(metadata: &Vec<RecordBatch>, topic_uuid: i128) -> bool {
+pub fn check_topic_id_exists(metadata: &[RecordBatch], topic_uuid: i128) -> bool {
     for batch in metadata {
         for record in &batch.records {
             if let RecordValue::TopicRecord(topic_record) = &record.value {
@@ -255,7 +255,7 @@ pub fn check_topic_id_exists(metadata: &Vec<RecordBatch>, topic_uuid: i128) -> b
     false
 }
 
-pub fn return_topic_name(metadata: &Vec<RecordBatch>, topic_uuid: i128) -> Option<Result<String, FromUtf8Error>> {
+pub fn return_topic_name(metadata: &[RecordBatch], topic_uuid: i128) -> Option<Result<String, FromUtf8Error>> {
     for batch in metadata {
         for record in &batch.records {
             if let RecordValue::TopicRecord(topic_record) = &record.value {
@@ -268,7 +268,7 @@ pub fn return_topic_name(metadata: &Vec<RecordBatch>, topic_uuid: i128) -> Optio
     None
 }
 
-pub fn return_topic_uuid(metadata: &Vec<RecordBatch>, topic_name: &[u8]) -> Option<i128> {
+pub fn return_topic_uuid(metadata: &[RecordBatch], topic_name: &[u8]) -> Option<i128> {
     for batch in metadata {
         for record in &batch.records {
             if let RecordValue::TopicRecord(topic_record) = &record.value {
@@ -281,7 +281,7 @@ pub fn return_topic_uuid(metadata: &Vec<RecordBatch>, topic_name: &[u8]) -> Opti
     None
 }
 
-pub fn describe_metadata_topic_partitions(metadata: &Vec<RecordBatch>, topic_uuid: i128) -> Option<Vec<PartitionMetadata>> {
+pub fn describe_metadata_topic_partitions(metadata: &[RecordBatch], topic_uuid: i128) -> Option<Vec<PartitionMetadata>> {
     let mut partitions_metadata = Vec::new();
 
     for batch in metadata {
