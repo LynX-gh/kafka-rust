@@ -1,12 +1,15 @@
 use bytes::{Buf, BufMut};
 
-pub fn put_varint(buf: &mut Vec<u8>, value: i8) {
-    let mut x = ((value << 1) ^ (value >> 7)) as u8;
-    while x & 0x80 != 0 {
-        buf.put_u8((x & 0x7F) | 0x80);
+pub fn put_varint(buf: &mut Vec<u8>, value: i32) {
+    // ZigZag encode to unsigned
+    let mut x: u32 = ((value as u32) << 1) ^ ((value >> 31) as u32);
+
+    // LEB128 encode
+    while x >= 0x80 {
+        buf.put_u8(((x as u8) & 0x7F) | 0x80);
         x >>= 7;
     }
-    buf.put_u8(x);
+    buf.put_u8(x as u8);
 }
 
 pub fn append_msg_len(buf: &mut [u8]) -> Vec<u8> {

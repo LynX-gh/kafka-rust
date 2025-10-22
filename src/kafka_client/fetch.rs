@@ -117,8 +117,7 @@ pub async fn handle_fetch_request(mut msg_buf: &[u8]) -> Vec<u8>{
 
             // Records Compact Array from File
             let records_data = write_records_from_file(data, topic.topic_id, partition.partition_idx).await;
-            println!("Record {} Len - {}", partition.partition_idx, records_data.len());
-            utils::put_varint(&mut response_msg, records_data.len() as i8 + 1); // total size of records + 1
+            utils::put_varint(&mut response_msg, records_data.len() as i32 + 1); // total size of records + 1
             response_msg.extend(records_data);
 
             // Continue Partitions Array
