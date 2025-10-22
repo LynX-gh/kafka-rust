@@ -19,6 +19,12 @@
     path = "/__cluster_metadata-0/00000000000000000000.log"
 
 [[api_key.key]]
+# Configuration for Produce API key
+key = 0
+min_version = 0
+max_version = 11
+
+[[api_key.key]]
 # Configuration for Fetch API key
 key = 1
 min_version = 0
